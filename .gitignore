@@ -1,0 +1,44 @@
+# ============================================================
+# AICraft · Git 忽略清单
+# 原则：只让源码、文档、脚本入库；运行环境、依赖、世界数据、
+#       日志、含密钥的配置一律排除。
+# ============================================================
+
+# —— 运行环境（二进制，约 379 MB）——
+/runtime/
+
+# —— 打包成品（AICraft.exe 约 188 MB，超过 GitHub 单文件上限）——
+/app/electron-dist/
+
+# —— 依赖包（约 858 MB，clone 后自己 npm install）——
+/app/node_modules/
+/bots/node_modules/
+
+# —— Minecraft 服务端：jar、世界存档、快照 ——
+/server/
+
+# —— 日志 ——
+/logs/
+/bots/logs/
+*.log
+
+# —— 配置：含真实 API Key，绝不入库 ——
+# 由 config.template.json 提供空模板
+/config.json
+/config.json.bak-*
+/config.template.json.bak-*
+
+# —— 一切手工备份 ——
+*.bak-*
+*.bak
+
+# —— 编辑器 / 系统杂物 ——
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# —— 临时文件 ——
+*.tmp
+*.temp

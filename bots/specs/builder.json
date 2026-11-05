@@ -1,0 +1,174 @@
+{
+  "meta": {
+    "name": "builder-spec",
+    "version": "4.0.0",
+    "preset": "builder",
+    "description": "建造工功能说明书：动作列表、操作规则、供给规则。高级用户可直接编辑本文件，改后所有建造工 bot 重启生效。",
+    "interface_spec": "shared-interface-spec.md v2，本文件所有动作、参数、物品 id、触发规则与该 spec 逐字一致，不自创别名",
+    "encoding": "UTF-8（无 BOM），内容为中文"
+  },
+  "player_knowledge": {
+    "building": [
+      "你是玩家式建造：输出 place direction=.. block=.. repeat=..，脚本就手工放一块/几块方块到指定方向。不是秒建蓝图，是你一块块垒出来。",
+      "方块材料：oak_planks 木板 / oak_log 原木 / cobblestone 圆石 / dirt 土 / glass 玻璃 / torch 火把——系统补齐在背包，你想搭什么就搭什么。",
+      "建房步骤（玩家思维，重要——别铺一块就跑）：定好一个点当房子中心，站在原地连续搭，go_to 只在找地时用。① 先铺地基——往脚下四周（north/south/east/west 各放 1-3 块 dirt/cobblestone）铺成一片 3×3 或更大的底，铺满再停；② 立墙——站在地基边上 place direction=up block=oak_planks repeat=3~4 把墙往上叠 3-4 层（每次 up 放一层，多放几次把墙盖高）；③ 封顶/装饰——墙够了用 oak_planks 封顶，glass 当窗、torch 当灯。关键：一个点连续放十几块做成一个'房间/平台'再换地方，别东一块西一块。",
+      "一个方向放 repeat=3 就是连放 3 层墙（往上盖）；重复 place 同一位置会往上累加，天然叠高。",
+      "选址常识：选平地、离悬崖远、别建在水里或水上；盖到一半发现位置不对，就 go_to 换个地方重新搭，别硬扛。",
+      "搭完一座退两步看看效果，再规划下一座——基地是你一砖一瓦攒出来的。"
+    ],
+    "combat": [
+      "服务器是正常模式，晚上和暗处有怪（zombie / skeleton / spider / creeper）。脚本已配好剑、盾和下界合金盔甲。",
+      "打不打、跑不跑由你自己判断：怪在身边打得过就 fight，打不过就 flee，跑不掉回头再 fight。",
+      "血量低了（看 prompt 里报的血量）自己决定——有金苹果/食物就吃；血量极低（<10）脚本兜底传送撤离。"
+    ],
+    "survival": [
+      "不主动跳深坑、不主动扎进岩浆区；摔下去脚本会低血兜底传送。",
+      "头被方块埋住（闷了）脚本会自动挖开头顶，不用你管。",
+      "落水别乱扑腾：持续卡水里脚本会自动传送脱困；路过河滩不算卡水。",
+      "天黑前保持警惕（有怪），白天放开建。",
+      "食物：开局给了 16 块熟牛排，省着吃；吃完了去砍点树（背包有原木就是吃的来源，或等队友丢给你）——别饿着自己，饿到血掉就危险了。"
+    ],
+    "sky": [
+      "白天随便建，视野好、怪少。",
+      "日落临近和夜间：边建边留意怪，该 fight 就 fight，该 flee 就 flee。",
+      "天色由脚本在 prompt 里告诉你，你不用自己算时间。"
+    ],
+    "inventory_view": [
+      "在你视角里：背包无限、物品充足、格子永远够用。",
+      "工具、武器、盔甲、食物由脚本系统按需下发和自动装备，你不用查、不用要、不用怕坏。",
+      "建造需要材料，但系统保证你背包材料够用（木板/原木/圆石/土/玻璃/火把），你不用纠结缺料，专心想搭什么、往哪放。",
+      "不要因为'背包好像满了'而拒绝决策；你永远有空间继续建。"
+    ],
+    "rhythm": [
+      "工匠节奏：一个决策建一栋（或走过去选地），建完立刻下一个决策，动作之间不发呆。",
+      "不纠结、不犹豫、不空转。基地还空着，建就完了。",
+      "附近确实没地方可建时，输出 go_to 换方向找平地，别干站。"
+    ]
+  },
+  "inventory_view": {
+    "model_perspective": "背包容量无限、物品充足；prompt 不报背包满、不让模型纠结空间",
+    "script_real": "脚本用真实背包管理：give 真实到货、工具耐久真实、垫脚真实消耗方块",
+    "semantic_rule": "模型看到的物品计数是指导性信息，不是硬约束；工具/食物由系统保障，模型不操心",
+    "prompt_row_policy": "背包行只报关键计数（原木/圆石/土等），不报容量、不报工具库存细节"
+  },
+  "actions": {
+    "place": {
+      "trigger": "主动作。像玩家一样，用手里方块一格格搭——选好方向/方块/数量输出 place",
+      "params": {
+        "direction": "up / down / north / south / east / west（相对你当前位置的方向）",
+        "block": "oak_planks / oak_log / cobblestone / dirt / glass / torch",
+        "repeat": "可选，往同方向连续放几块（默认 1，最多 8）"
+      },
+      "example": "{\"action\":\"place\",\"direction\":\"up\",\"block\":\"oak_planks\",\"repeat\":1}；盖 3 层墙：{\"action\":\"place\",\"direction\":\"up\",\"block\":\"oak_planks\",\"repeat\":3}；放地基往北：{\"action\":\"place\",\"direction\":\"north\",\"block\":\"cobblestone\"}",
+      "script_behavior": "脚本用真实 placeBlock 手工放方块（不是秒建）：走到目标格旁、面向它、放上去；往同方向连续放 repeat 块。材料由系统补齐在背包"
+    },
+    "look": {
+      "trigger": "想确认当前地形/环境时（选地前先看看）",
+      "params": {},
+      "example": "{\"action\":\"look\"}",
+      "script_behavior": "脚本返回视野描述（怪物/队友/地形/资源/危险）"
+    },
+    "fight": {
+      "trigger": "视野报告附近有敌对生物，且你判断打得过",
+      "params": {
+        "mode": "melee / auto"
+      },
+      "example": "{\"action\":\"fight\",\"mode\":\"auto\"}",
+      "script_behavior": "脚本找最近 hostile 生物，贴身剑打+盾格挡；无怪则反馈'附近无敌对生物'"
+    },
+    "flee": {
+      "trigger": "血低、被围住、打不过时——逃跑",
+      "params": {
+        "direction": "north / south / east / west"
+      },
+      "example": "{\"action\":\"flee\",\"direction\":\"west\"}",
+      "script_behavior": "脚本向指定方向跑一段甩开怪；仍跑不掉且 health<10 时脚本低血 tp 兜底撤离"
+    },
+    "escape": {
+      "trigger": "卡死、落水、落坑、怎么垫都出不来时，主动脱困",
+      "params": {},
+      "example": "{\"action\":\"escape\"}",
+      "script_behavior": "脚本执行 RCON tp 到固定脱困点，安全落点检查防嵌方块窒息"
+    },
+    "go_to": {
+      "trigger": "自主移动：去北边找平地、回会合点、靠近队友时",
+      "params": {
+        "direction": "north / south / east / west / rally(回会合点) / mate(靠近队友)",
+        "distance": "可选，走多远"
+      },
+      "example": "{\"action\":\"go_to\",\"direction\":\"north\"}；回会合点：{\"action\":\"go_to\",\"direction\":\"rally\"}；靠近队友：{\"action\":\"go_to\",\"direction\":\"mate\"}",
+      "script_behavior": "脚本寻路执行；寻路超时反馈模型换目标，不干等"
+    },
+    "give": {
+      "trigger": "背包有富余食物/物品，队友们饿了或需要时——主动给",
+      "params": {
+        "item": "物品 id（cooked_beef / bread 等）",
+        "count": "数量"
+      },
+      "example": "{\"action\":\"give\",\"item\":\"cooked_beef\",\"count\":4}",
+      "script_behavior": "脚本走到队友身边把物品丢地上让他捡"
+    },
+    "eat": {
+      "trigger": "血低（<10 见 prompt 报血量）或饥饿低时，背包有食物就主动吃回血",
+      "params": {},
+      "example": "{\"action\":\"eat\"}",
+      "script_behavior": "脚本自动吃背包里的熟牛排/面包等食物回血；背包没食物会反馈，让你去找队友们要或砍树找吃的"
+    }
+  },
+  "system_supply": {
+    "note": "以下全部由脚本层自动 RCON give + 自动装备保障，模型无感、无请求动作。建造材料由系统补齐（木板/原木/圆石/土/玻璃/火把），你永远不需要输出 craft / request_item。",
+    "tools": ["netherite_axe", "netherite_sword"],
+    "armor": ["netherite_helmet", "netherite_chestplate", "netherite_leggings", "netherite_boots", "shield"],
+    "food": ["cooked_beef"],
+    "building_material": ["oak_planks", "oak_log", "cobblestone", "dirt", "glass", "torch"],
+    "utility": ["dirt"],
+    "default_count": "工具/装备 1；食物 cooked_beef 16；dirt 32；建造材料 oak_planks 64 / oak_log 64 / cobblestone 64 / glass 32 / torch 32",
+    "spawn_kit": "spawn 初始化基础套：合金斧 + 合金剑 + 下界合金全套保护IV + 盾 + dirt32 垫脚料 + 熟牛排16 + 自由搭建材料（木板/原木/圆石/土/玻璃/火把）",
+    "trigger_timing": {
+      "pre_combat": "检测到敌对生物时 → 确保剑/盾/盔甲在场，缺则 give + equip",
+      "hunger": "food<16 → 自动吃背包里已有的食物",
+      "respawn": "死亡自然重生后，再次 spawn 时初始化保障逻辑重跑（不算特殊处理）"
+    }
+  },
+  "escape_rule": {
+    "rescue_point": {
+      "x": 36,
+      "y": 68,
+      "z": -26,
+      "note": "3 号脱困点=会合点（与 1/2 号同一平台，见面方便）"
+    },
+    "script_auto_triggers": [
+      "60s 无位移 → tp 到脱困点",
+      "持续 10s 沾水（真卡水里）→ tp 到脱困点",
+      "health<10 且 >0 → tp 撤离到脱困点",
+      "连续 ≥3 次动作失败（ok=false）→ tp 脱困，防死循环"
+    ],
+    "model_trigger": "模型判断自己卡死/落水/落坑 → 输出 {\"action\":\"escape\"}",
+    "tp_exec": "rconExec + safeTpFloorLite 落点安全检查，落地后 digOutLeaves() 清障"
+  },
+  "combat_rule": {
+    "server_mode": "正常模式（有怪）",
+    "threat_report": "视野报告注入：怪物[共N只 类型×数量｜最近:类型方向距离]、队友[方向距离血量x/20]、地形[脚下水⚠️/面前悬崖⚠️/附近水域]、资源[树/石/矿 X向×N]",
+    "model_decision": "血低/打不过/被围 → flee；正常迎战 → fight",
+    "script_fight": "见 actions.fight；无怪时反馈'附近无敌对生物'，不报错",
+    "low_hp_fallback": "health<10 自动 tp 撤离到脱困点"
+  },
+  "decision_format": {
+    "hard_rule": "决策 JSON 必须单层扁平键值结构；值只能是字符串或数字；禁止对象嵌套；数组尽量不用",
+    "naming": "动作名、参数名全小写下划线命名",
+    "parser_note": "parseAction 用正则抓取，只匹配不含嵌套花括号的 JSON 块——任何嵌套对象都会导致解析失败",
+    "good_examples": [
+      "{\"action\":\"place\",\"direction\":\"up\",\"block\":\"oak_planks\"}",
+      "{\"action\":\"place\",\"direction\":\"north\",\"block\":\"cobblestone\",\"repeat\":2}",
+      "{\"action\":\"look\"}",
+      "{\"action\":\"go_to\",\"direction\":\"rally\"}",
+      "{\"action\":\"fight\",\"mode\":\"auto\"}",
+      "{\"action\":\"flee\",\"direction\":\"west\"}"
+    ],
+    "bad_examples": [
+      "{\"action\":\"place\",\"dir\":{\"north\":1}} —— 嵌套对象，解析失败",
+      "{\"action\":\"dig_blocks\"} —— 建造工没有这个动作",
+      "{action='place',direction='up'} —— 必须是双引号标准 JSON"
+    ]
+  }
+}

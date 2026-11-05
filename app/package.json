@@ -1,0 +1,15 @@
+{
+  "name": "aicraft",
+  "version": "1.0.0",
+  "description": "AICraft — MC-AI 学习版游戏（AI 工人 Minecraft 沙盒）",
+  "main": "main.js",
+  "author": "Doubao",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^33.4.11",
+    "electron-packager": "^17.1.2"
+  }
+}

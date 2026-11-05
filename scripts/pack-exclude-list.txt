@@ -1,0 +1,37 @@
+# AICraft 发行包排除清单（打包工具按此剔除，不进发行包）
+# 用法：按行匹配路径/glob；# 开头是注释
+
+# --- 真实 key 与配置残留（严禁进发行包） ---
+config.json
+config.json.bak-*
+*.bak-20261026-二期改造前
+*.bak-20261025-*
+config.local.json
+
+# --- 开发日志 / 调试产物 ---
+logs\*.log
+logs\bot-state-*.json
+logs\decisions\*.jsonl
+logs\指令箱.txt
+logs\center.port.json
+server\logs\*.log
+server\logs\latest.log
+
+# --- 开发者世界与快照（发行包首启由 MC 全新生成） ---
+server\world\
+server\world.bak-*
+server\world.pre-rollback-*
+server\world.pre-reset-*
+server\snapshots\
+
+# --- viewer patch 备份（不进发行包） ---
+bots\node_modules\prismarine-viewer\lib\mineflayer.js.bak-*
+
+# --- 文档/计划/说明（发行版不需要） ---
+AICraft实施计划.md
+使用说明.txt
+
+# --- 操作系统垃圾 ---
+Thumbs.db
+Desktop.ini
+.DS_Store

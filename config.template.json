@@ -1,0 +1,44 @@
+{
+  "setupWizardDone": false,
+  "server": {
+    "host": "127.0.0.1",
+    "portPref": 25565,
+    "rconPortPref": 25575,
+    "xmx": "2G",
+    "rconPassword": "",
+    "world": {
+      "seed": null,
+      "difficulty": "peaceful",
+      "gamemode": "survival",
+      "keepInventory": true,
+      "levelType": "minecraft:normal"
+    },
+    "snapshots": {
+      "autoEveryMin": 10,
+      "autoKeep": 5,
+      "manualKeep": 20,
+      "totalCapMB": 2048,
+      "autoThrottleAtMB": 500,
+      "throttleEveryMin": 20
+    }
+  },
+  "memory": { "rounds": 5 },
+  "llm": { "decisionIntervalMs": 3000, "staggerStartMs": 8000 },
+  "model": {
+    "provider": "cloud",
+    "cloud": { "endpoint": "https://api.agnes-ai.cn/v1/chat/completions", "apiKey": "", "model": "" },
+    "qwen": { "endpoint": "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions", "apiKey": "", "model": "" },
+    "ark": { "endpoint": "https://ark.cn-beijing.volces.com/api/v3/chat/completions", "apiKey": "", "model": "" }
+  },
+  "providers": [
+    { "id": "cloud", "name": "Agnes AI", "endpoint": "https://api.agnes-ai.cn/v1/chat/completions", "key": "", "models": [], "defaultModel": "", "thinkingStyle": "budget512", "rpmBudget": 60 },
+    { "id": "qwen", "name": "通义千问", "endpoint": "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions", "key": "", "models": [], "defaultModel": "", "thinkingStyle": "qwen", "rpmBudget": null },
+    { "id": "deepseek", "name": "DeepSeek", "endpoint": "https://api.deepseek.com/v1/chat/completions", "key": "", "models": ["deepseek-v4-flash", "deepseek-v4-pro"], "defaultModel": "deepseek-v4-flash", "thinkingStyle": "all", "rpmBudget": null },
+    { "id": "ark", "name": "火山方舟", "endpoint": "https://ark.cn-beijing.volces.com/api/v3/chat/completions", "key": "", "models": [], "defaultModel": "", "thinkingStyle": "ark", "rpmBudget": null }
+  ],
+  "presets": [
+    { "id": "worker", "name": "拆建全能工", "desc": "会拆会建：TNT爆破 + 蓝图秒建 + 兑换机制", "script": "bot-lite.js", "persona": "persona-worker.json" },
+    { "id": "builder", "name": "纯建造工", "desc": "自由搭建：一格格亲手盖房，不靠脚本", "script": "bot.js", "persona": "persona-builder.json" }
+  ],
+  "bots": []
+}

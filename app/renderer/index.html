@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self' http://127.0.0.1:*">
+<title>AICraft — AI 工人沙盒</title>
+<style>
+:root {
+  --bg:#14141f; --bg2:#1c1c2e; --card:#232338; --card2:#2a2a42; --border:#3a3a55;
+  --text:#e8e8f0; --text2:#9a9ab8; --accent:#ffb300; --accent2:#ff7f50;
+  --green:#4caf50; --red:#f44336; --blue:#42a5f5; --yellow:#ffca28;
+  --shadow:0 4px 16px rgba(0,0,0,.4);
+}
+[data-theme="light"] {
+  --bg:#f4f4f8; --bg2:#ececf2; --card:#fff; --card2:#f7f7fc; --border:#d8d8e4;
+  --text:#1c1c2a; --text2:#6a6a85; --accent:#d98a00; --accent2:#e8601a;
+  --green:#2e7d32; --red:#c62828; --blue:#1976d2; --yellow:#b8860b;
+  --shadow:0 4px 16px rgba(20,20,40,.12);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:"Segoe UI","Microsoft YaHei",sans-serif; background:var(--bg); color:var(--text); min-height:100vh; overflow-x:hidden; transition:background .3s,color .3s; }
+.btn { border:1px solid var(--border); background:var(--card); color:var(--text); padding:8px 14px; border-radius:8px; cursor:pointer; font-size:13px; transition:all .2s; }
+.btn:hover { border-color:var(--accent); color:var(--accent); }
+.btn:disabled { opacity:.5; cursor:not-allowed; }
+.btn-primary { background:var(--accent); color:#111; font-weight:700; border-color:transparent; }
+.btn-primary:hover { filter:brightness(1.1); color:#111; }
+.btn-danger { border-color:var(--red); color:var(--red); }
+.btn-danger:hover { background:var(--red); color:#fff; }
+.btn-green { border-color:var(--green); color:var(--green); }
+.btn-green:hover { background:var(--green); color:#fff; }
+.btn.busy { opacity:.6; pointer-events:none; }
+.dim { color:var(--text2); font-size:12px; }
+.model-tags { display:flex; flex-wrap:wrap; gap:8px; }
+.model-tag { display:inline-flex; align-items:center; gap:6px; background:var(--card2); border:1px solid var(--border); border-radius:8px; padding:4px 8px; font-size:13px; }
+.model-del { border:none; background:transparent; color:var(--text2); cursor:pointer; font-size:15px; line-height:1; padding:0 2px; }
+.model-del:hover { color:var(--red); }
+.model-add-input { flex:1; min-width:180px; }
+.modal-mask { position:fixed; inset:0; background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; z-index:999; }
+.modal-box { width:min(520px,92vw); max-height:82vh; overflow:auto; background:var(--card); border:1px solid var(--border); border-radius:14px; padding:18px; }
+.modal-list { display:flex; flex-direction:column; gap:8px; margin:12px 0; }
+.modal-list label { display:flex; align-items:center; gap:8px; font-size:14px; }
+.row { display:flex; gap:8px; align-items:center; }
+h3 { font-size:15px; }
+
+/* ===== 顶部栏 ===== */
+.topbar { display:flex; align-items:center; gap:16px; padding:12px 20px; background:var(--bg2); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:100; }
+.logo { font-size:22px; font-weight:800; color:var(--accent); letter-spacing:1px; }
+.logo small { font-size:12px; color:var(--text2); font-weight:400; margin-left:8px; }
+.topbar .spacer { flex:1; }
+.theme-toggle { display:flex; gap:4px; background:var(--card); border:1px solid var(--border); border-radius:8px; padding:3px; }
+.theme-toggle button { border:none; background:transparent; color:var(--text2); padding:5px 12px; border-radius:6px; cursor:pointer; font-size:12px; }
+.theme-toggle button.active { background:var(--accent); color:#111; font-weight:700; }
+
+/* ===== 警告条 ===== */
+.warn-bar { background:#3a2f10; border:1px solid var(--yellow); color:#ffe9a8; padding:9px 16px; font-size:13px; display:flex; gap:10px; align-items:center; }
+.warn-bar button { margin-left:auto; }
+[data-theme="light"] .warn-bar { background:#fff7d6; color:#6a5300; }
+
+/* ===== 布局 ===== */
+.main { display:flex; padding:16px 20px; gap:16px; align-items:flex-start; }
+.sidebar { width:250px; flex-shrink:0; display:flex; flex-direction:column; gap:12px; position:sticky; top:70px; }
+.content { flex:1; min-width:0; }
+.side-section { display:flex; flex-direction:column; gap:8px; }
+.side-btn { display:flex; align-items:center; gap:8px; padding:10px 12px; border:1px solid var(--border); background:var(--card); color:var(--text); border-radius:8px; cursor:pointer; font-size:13px; text-align:left; width:100%; }
+.side-btn:hover { border-color:var(--accent); }
+.side-btn.active { background:var(--card2); border-color:var(--accent); }
+.card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px; box-shadow:var(--shadow); margin-bottom:14px; }
+.card h3 { margin-bottom:10px; display:flex; align-items:center; gap:6px; }
+.card h3 .badge { font-size:11px; padding:2px 8px; border-radius:10px; background:var(--card2); color:var(--text2); font-weight:400; }
+.panel { display:none; }
+.panel.active { display:block; }
+.panel-card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:14px; box-shadow:var(--shadow); }
+.panel-card h3 { font-size:15px; margin-bottom:12px; color:var(--accent); }
+.desc { font-size:12px; color:var(--text2); margin-bottom:12px; line-height:1.6; }
+
+/* ===== 表单 ===== */
+.field { margin-bottom:12px; }
+.field label { display:block; font-size:12px; color:var(--text2); margin-bottom:4px; }
+.field input, .field select, .field textarea { width:100%; padding:8px 10px; background:var(--bg2); border:1px solid var(--border); color:var(--text); border-radius:6px; font-size:13px; font-family:inherit; }
+.field .hint { font-size:11px; color:var(--text2); margin-top:3px; }
+.check { display:flex; align-items:center; gap:8px; font-size:13px; margin-bottom:10px; }
+.check input { width:auto; }
+
+/* ===== Bot 卡片 ===== */
+.bot-grid { display:flex; flex-direction:column; gap:14px; }
+.bot-card { background:var(--card); border:1px solid var(--border); border-radius:12px; overflow:hidden; box-shadow:var(--shadow); border-left-width:4px; }
+.bot-card.online { border-color:var(--green); }
+.bot-card.crashed { border-color:var(--red); }
+.bot-head { display:flex; align-items:center; gap:10px; padding:10px 14px; background:var(--card2); border-bottom:1px solid var(--border); flex-wrap:wrap; }
+.bot-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.bot-dot.on { background:var(--green); box-shadow:0 0 8px var(--green); }
+.bot-dot.off { background:var(--text2); }
+.bot-dot.starting { background:var(--yellow); }
+.bot-dot.crashed { background:var(--red); box-shadow:0 0 8px var(--red); }
+.bot-name { font-weight:700; font-size:15px; }
+.bot-sub { font-size:12px; color:var(--text2); }
+.bot-actions { display:flex; gap:6px; flex-wrap:wrap; }
+.bot-body { padding:12px 14px; }
+.bot-err { background:#3a1515; border:1px solid var(--red); border-radius:8px; padding:10px 12px; margin-top:10px; font-size:12px; line-height:1.7; }
+.bot-err .t { color:var(--red); font-weight:700; font-size:13px; }
+.bot-stats { display:grid; grid-template-columns:repeat(6,1fr); gap:8px; margin:10px 0; }
+.stat { background:var(--card2); border:1px solid var(--border); border-radius:8px; padding:8px; text-align:center; }
+.stat .label { font-size:11px; color:var(--text2); }
+.stat .value { font-size:16px; font-weight:700; margin-top:2px; }
+.stat .value.low { color:var(--red); }
+.recent { font-size:12px; color:var(--text2); padding:4px 2px; }
+
+/* ===== 加载屏（splash 合一） ===== */
+#boot-overlay { position:fixed; inset:0; z-index:1000; background:radial-gradient(circle at 50% 30%,#232338,#14141f); display:flex; align-items:center; justify-content:center; }
+.boot-inner { width:min(680px,92vw); text-align:center; color:var(--text); }
+.boot-logo { font-size:26px; font-weight:800; color:var(--accent); margin-bottom:14px; }
+.mining { font-size:40px; display:inline-block; animation:mine 1s infinite; }
+@keyframes mine { 0%,100%{transform:translateY(0) rotate(-8deg);} 50%{transform:translateY(-6px) rotate(8deg);} }
+.grid9 { display:grid; grid-template-columns:repeat(9,1fr); gap:6px; margin:22px 0 16px; }
+.bcell { background:#3a3a4a; border:2px solid #4a4a5e; border-radius:8px; padding:8px 2px; font-size:11px; color:#888; transition:all .3s; }
+.bcell-icon { font-size:16px; display:block; }
+.bcell.done { background:#5a4a2a; border-color:var(--accent); color:var(--accent); }
+.bcell.now { background:#6a5a30; border-color:var(--accent); color:#fff; animation:pulse 1s infinite; }
+.bcell.slow { border-color:var(--yellow); }
+.bcell.fail { background:#5a2020; border-color:var(--red); }
+@keyframes pulse { 50% { box-shadow:0 0 12px var(--accent); } }
+.bcell-pct, .bcell-count { display:block; font-size:11px; font-weight:700; color:#fff; }
+#boot-phase { font-size:15px; margin:10px 0; min-height:22px; }
+#boot-quote { font-size:13px; color:var(--text2); min-height:20px; font-style:italic; }
+#boot-log-wrap { margin-top:16px; text-align:left; }
+#boot-log { background:#0e0e18; color:#9a9ab8; font-size:11px; padding:10px; border-radius:8px; max-height:160px; overflow:auto; white-space:pre-wrap; }
+#boot-fail { margin-top:16px; background:#3a1212; border:1px solid var(--red); border-radius:10px; padding:16px; }
+#boot-fail h2 { color:var(--red); margin-bottom:8px; }
+#boot-fail p { font-size:13px; line-height:1.7; margin-bottom:12px; }
+
+/* ===== 向导 ===== */
+#wizard-overlay { position:fixed; inset:0; z-index:1100; background:rgba(10,10,20,.94); display:none; align-items:center; justify-content:center; }
+.wiz-box { width:min(620px,92vw); background:var(--card); border:1px solid var(--border); border-radius:14px; padding:26px; box-shadow:var(--shadow); max-height:92vh; overflow:auto; }
+.wiz-dot { font-size:12px; color:var(--text2); margin-right:12px; }
+.wiz-dot.cur { color:var(--accent); font-weight:700; }
+.wiz-dot.done { color:var(--green); }
+.wiz-p { font-size:14px; line-height:1.8; margin:10px 0; }
+.wiz-provider { background:var(--card2); border:1px solid var(--border); border-radius:10px; padding:12px; margin-bottom:10px; }
+.wiz-check { font-size:14px; line-height:2; }
+.wiz-check.bad { color:var(--red); }
+.wiz-join-card { background:#3a3315; border:1px solid #8a6d1f; border-radius:10px; padding:12px 14px; font-size:13px; line-height:1.8; margin:12px 0; color:#f0e0a8; }
+[data-theme="light"] .wiz-join-card { background:#fff8e1; color:#5a4500; border-color:#e0b94a; }
+
+/* ===== 存档页 ===== */
+.cap-bar { background:var(--bg2); border:1px solid var(--border); border-radius:8px; height:10px; margin:8px 0; overflow:hidden; }
+.cap-fill { background:var(--green); height:100%; transition:width .3s; }
+.cap-fill.over { background:var(--red); }
+.warn-inline { color:var(--yellow); font-size:12px; margin:6px 0; }
+.saves-current { background:var(--card2); border:1px solid var(--border); border-radius:10px; padding:14px; margin-top:14px; }
+.snap-row { display:flex; align-items:center; gap:10px; padding:9px 4px; border-bottom:1px solid var(--border); font-size:13px; }
+.snap-row.invalid { opacity:.5; }
+.tag { font-size:11px; padding:2px 8px; border-radius:10px; }
+.tag.manual { background:#5a3a10; color:#ffb300; }
+.tag.auto { background:var(--card2); color:var(--text2); }
+.saves-progress { position:sticky; bottom:0; background:var(--card2); border:1px solid var(--accent); border-radius:10px; padding:12px 16px; margin-top:14px; font-size:13px; }
+.pstep { font-size:12px; color:var(--text2); }
+
+/* ===== 对话区（公屏式） ===== */
+.chat-row { padding:6px 10px; border-left:3px solid; margin:4px 0; font-size:13px; line-height:1.6; background:var(--bg2); border-radius:0 8px 8px 0; }
+.chat-who { font-weight:700; margin-right:8px; }
+.chat-text { color:var(--text); }
+.chat-time { font-size:11px; color:var(--text2); margin-left:10px; }
+.chat-empty { color:var(--text2); font-size:12px; padding:10px 0; text-align:center; }
+
+/* ===== 内存预估行 ===== */
+.mem-line { font-size:12px; padding:8px 10px; border-radius:8px; margin:8px 0; background:var(--card2); border:1px solid var(--border); }
+.mem-dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:6px; }
+.mem-dot.green { background:var(--green); } .mem-dot.yellow { background:var(--yellow); } .mem-dot.red { background:var(--red); }
+
+/* ===== 弹窗遮罩 ===== */
+.modal-mask { position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:1200; display:flex; align-items:center; justify-content:center; }
+.modal { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:22px; width:min(480px,92vw); }
+.modal p { font-size:13px; line-height:1.8; margin:8px 0; }
+
+/* ===== toast ===== */
+.toast-wrap { position:fixed; bottom:20px; right:20px; display:flex; flex-direction:column; gap:8px; z-index:999; }
+.toast { background:var(--card); border:1px solid var(--border); border-left:4px solid var(--accent); color:var(--text); padding:10px 14px; border-radius:8px; font-size:13px; box-shadow:var(--shadow); max-width:400px; }
+.toast.error { border-left-color:var(--red); }
+.toast.success { border-left-color:var(--green); }
+
+/* ===== 关窗存盘小条 ===== */
+#shutdown-bar { position:fixed; left:50%; bottom:26px; transform:translateX(-50%); z-index:1300; background:#232338; border:1px solid var(--accent); border-radius:12px; padding:14px 20px; box-shadow:var(--shadow); display:none; max-width:520px; text-align:center; }
+#shutdown-bar .t { font-size:14px; margin-bottom:8px; }
+#btn-force-quit { color:var(--text2); font-size:12px; background:none; border:none; cursor:pointer; text-decoration:underline; }
+#btn-force-quit.arm { color:var(--red); font-weight:700; }
+
+/* 全局悬浮提示（fixed 容器，事件委托在 common.js；z-index 高于 shutdown-bar 1300 与一切弹窗） */
+#app-tooltip { position:fixed; z-index:1500; pointer-events:none; background:var(--text); color:var(--bg); padding:5px 10px; border-radius:6px; font-size:12px; white-space:nowrap; display:none; max-width:46vw; }
+.help-block { margin-bottom:14px; }
+.help-block h4 { color:var(--accent); font-size:14px; margin-bottom:6px; }
+.help-block p, .help-block ul { font-size:13px; color:var(--text2); line-height:1.8; }
+.help-block ul { padding-left:20px; }
+
+@media (max-width:1100px) { .main { flex-direction:column; } .sidebar { width:100%; position:static; flex-direction:row; flex-wrap:wrap; } }
+</style>
+</head>
+<body>
+
+<!-- ===== 冷启动加载屏 ===== -->
+<div id="boot-overlay">
+  <div class="boot-inner">
+    <div class="boot-logo">⛏ AICraft</div>
+    <div class="mining">⛏🧱</div>
+    <div class="grid9" id="boot-grid"></div>
+    <div id="boot-phase">正在打开大门…</div>
+    <div id="boot-quote"></div>
+    <details id="boot-log-wrap"><summary style="cursor:pointer;color:var(--text2);font-size:12px;">干活细节（点开看 ▾）</summary>
+      <pre id="boot-log"></pre></details>
+    <div id="boot-fail" hidden>
+      <h2 id="boot-fail-title"></h2>
+      <p id="boot-fail-desc"></p>
+      <div class="row" style="justify-content:center; gap:10px;">
+        <button class="btn" id="boot-wait">再等 60 秒</button>
+        <button class="btn" id="boot-showlog">看看日志细节</button>
+        <button class="btn btn-danger" id="boot-retry">强退后重来</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 首启向导 ===== -->
+<div id="wizard-overlay">
+  <div class="wiz-box">
+    <div id="wiz-steps" style="margin-bottom:16px;"></div>
+    <div id="wiz-body"></div>
+    <div class="row" id="wiz-nav" style="justify-content:space-between; margin-top:20px;">
+      <button class="btn" id="wiz-prev">← 上一步</button>
+      <button class="btn" id="wiz-skip">先逛逛大厅 »</button>
+      <button class="btn btn-primary" id="wiz-next">下一步 →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 主界面 ===== -->
+<div class="topbar">
+  <div class="logo">⛏ AICraft<small>AI 工人沙盒</small></div>
+  <div class="spacer"></div>
+  <div class="theme-toggle" data-tip="切换黑/白主题，记忆到本机">
+    <button id="theme-dark" class="active">🌙 暗色</button>
+    <button id="theme-light">☀️ 亮色</button>
+  </div>
+</div>
+
+<div id="warn-bars"></div>
+
+<div class="main">
+  <div class="sidebar">
+    <div class="side-section">
+      <button class="side-btn active" data-panel="dashboard" data-tip="查看所有工人状态与操作"><span>🏠</span> 指挥大厅</button>
+      <button class="side-btn" data-panel="chat" data-tip="看工人们说了什么"><span>💬</span> 工人对话</button>
+      <button class="side-btn" data-panel="saves" data-tip="存档管理：存一份、用某个存档、删除世界"><span>💾</span> 存档管理</button>
+      <button class="side-btn" data-panel="settings" data-tip="世界种子/难度/内存/记忆条数"><span>⚙️</span> 设置</button>
+      <button class="side-btn" data-panel="providers" data-tip="AI 大脑供应商：网址、钥匙、型号"><span>🔌</span> AI 大脑供应商</button>
+      <button class="side-btn" data-panel="bots" data-tip="添加/编辑工人"><span>🤖</span> 工人管理</button>
+      <button class="side-btn" data-panel="help" data-tip="FAQ、日志在哪、3D 是什么"><span>❓</span> 帮助</button>
+    </div>
+    <div class="card side-section">
+      <div class="mem-line" id="mem-line-side"></div>
+      <button class="btn btn-primary" id="btn-all-start" data-tip="一键上班：起服务器 + 起所有工人">▶ 一键上班</button>
+      <button class="btn btn-danger" id="btn-all-stop" data-tip="集体下班：先安全存盘再关服">■ 集体下班</button>
+      <div class="dim">💡 这里一键开关所有人；想单独开服务器，去大厅上面那块。</div>
+    </div>
+  </div>
+
+  <div class="content">
+    <!-- 大厅 -->
+    <div class="panel active" id="panel-dashboard">
+      <div class="card">
+        <h3>🖥 服务器 <span class="badge" id="srv-status-badge">未运行</span></h3>
+        <div class="row" style="flex-wrap:wrap;">
+          <button class="btn btn-green" id="btn-srv-start" data-tip="启动 Minecraft 服务器（第一次生成世界约 1~2 分钟）">启动服务器</button>
+          <button class="btn btn-danger" id="btn-srv-stop" data-tip="停止服务器（会先安全存盘）">停止服务器</button>
+          <button class="btn" id="btn-log-toggle" data-tip="展开服务器运行日志">📜 运行日志</button>
+          <span class="dim" id="srv-info"></span>
+        </div>
+        <pre id="srv-log" hidden style="background:#0e0e18;color:#9a9ab8;font-size:11px;padding:10px;border-radius:8px;max-height:200px;overflow:auto;margin-top:8px;white-space:pre-wrap;"></pre>
+      </div>
+      <div id="bot-grid"></div>
+    </div>
+
+    <!-- 对话 -->
+    <div class="panel" id="panel-chat">
+      <div class="card"><h3>💬 工人对话 <span class="dim" style="font-weight:400;">最新在最上；工人离线时显示“还没进厂”</span></h3>
+      <div id="chat-body"></div></div>
+    </div>
+
+    <!-- 存档管理 -->
+    <div class="panel" id="panel-saves"><div id="saves-body"></div></div>
+
+    <!-- 设置 -->
+    <div class="panel" id="panel-settings">
+      <div class="panel-card">
+        <h3>🌍 世界设置</h3>
+        <div class="desc">种子/难度要<b>下次开新世界</b>才生效；运行内存（RAM）档重启服务器生效。</div>
+        <div class="row" style="gap:10px;">
+          <div class="field" style="flex:1;"><label>种子（留空=随机）</label><input id="set-seed" type="number" placeholder="留空 = 随机"><div class="hint">相同种子 = 相同地形</div></div>
+          <div class="field" style="flex:1;"><label>难度</label><select id="set-difficulty">
+            <option value="peaceful">和平（无怪物）</option><option value="easy">简单</option><option value="normal">普通</option><option value="hard">困难</option></select></div>
+          <div class="field" style="flex:1;"><label>游戏模式</label><select id="set-gamemode">
+            <option value="survival">生存</option><option value="creative">创造</option></select></div>
+        </div>
+        <div class="row" style="gap:10px;">
+          <div class="field" style="flex:1;"><label>给服务器留多少运行内存（RAM）</label><input id="set-xmx" type="text" value="2G" placeholder="如 2G、4G、1024M">
+            <div class="hint">这是给游戏世界留的运行内存（RAM），不是显存，也不是硬盘。改这个要<b>重启 AICraft</b> 生效。<br>💡 参考：1~2 个工人用 2G；3~4 个用 3~4G；5~6 个用 4~6G。格式支持 G 或 M（如 4G、2048M）。</div></div>
+        </div>
+        <div class="check"><input type="checkbox" id="set-keepinventory" checked><label for="set-keepinventory">死亡不掉落（保留背包）</label></div>
+      </div>
+      <div class="panel-card">
+        <h3>🧠 记忆设置</h3>
+        <div class="desc">工人能记住的最近对话轮数。改完会自动让工人按新记性上班。</div>
+        <div class="field"><label>记忆轮数（默认 5）</label><input id="set-memory" type="number" min="1" max="50" value="5"></div>
+      </div>
+      <div class="panel-card">
+        <h3>🔌 端口</h3>
+        <div class="desc">端口被占会自动顺延，无需手改；改这里下次启动服务器生效。</div>
+        <div class="row" style="gap:10px;">
+          <div class="field" style="flex:1;"><label>游戏端口（默认 25565）</label><input id="set-srvport" type="number"></div>
+          <div class="field" style="flex:1;"><label>内部对讲机端口（默认 25575）</label><input id="set-rconport" type="number"></div>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="btn-save-settings">💾 保存设置</button>
+    </div>
+
+    <!-- 服务商 -->
+    <div class="panel" id="panel-providers">
+      <div class="panel-card">
+        <h3>🔌 AI 大脑供应商</h3>
+        <div class="desc">每个工人可单独选供应商/大脑型号，钥匙可共用也可每人独立。钥匙已打码保存，留空=不改原钥匙。</div>
+        <div id="provider-list"></div>
+        <button class="btn" id="btn-add-provider">＋ 添加供应商</button>
+      </div>
+    </div>
+
+    <!-- 工人管理 -->
+    <div class="panel" id="panel-bots">
+      <div class="panel-card">
+        <h3>👶 新手一键配好两个工人</h3>
+        <div class="desc">拆建全能工 + 纯建造工，共用一把钥匙，点一下就上岗。</div>
+        <button class="btn btn-primary" id="btn-preset-two">✨ 一键配好两个工人</button>
+      </div>
+      <div class="panel-card">
+        <h3>🤖 添加工人</h3>
+        <div class="field"><label>工种模板</label><select id="add-script"><option value="bot-lite.js">拆建全能工（会拆会建、TNT、兑换）</option><option value="bot.js">纯建造工（一格格亲手盖房）</option></select></div>
+        <div class="row" style="gap:10px;">
+          <div class="field" style="flex:1;"><label>名字（技术代号自动 L1~L6）</label><input id="add-name" placeholder="比如：小红"></div>
+          <div class="field" style="flex:1;"><label>昵称（卡片上显示）</label><input id="add-nick" placeholder="比如：1号·小工"></div>
+        </div>
+        <div class="row" style="gap:10px;">
+          <div class="field" style="flex:1;"><label>供应商</label><select id="add-provider"></select></div>
+          <div class="field" style="flex:1;"><label>大脑型号</label><select id="add-model"></select></div>
+        </div>
+        <div class="field"><label>钥匙</label>
+          <div class="check"><input type="radio" name="add-keymode" id="add-keymode-shared" value="shared" checked><label for="add-keymode-shared">共用供应商的钥匙</label></div>
+          <div class="check"><input type="radio" name="add-keymode" id="add-keymode-own" value="own"><label for="add-keymode-own">这个工人用独立钥匙</label></div>
+          <input id="add-ownkey" type="password" placeholder="独立钥匙（password 框）" style="margin-top:4px;">
+        </div>
+        <div class="row" style="gap:10px;">
+          <div class="field" style="flex:1;"><label>记忆条数（默认 5）</label><input id="add-memrounds" type="number" min="1" max="50" value="5"></div>
+          <div class="field" style="flex:1;"><label>颜色（卡片/对话配色）</label><input id="add-color" type="color" value="#60a5fa"></div>
+        </div>
+        <div class="check"><input type="checkbox" id="add-viewer"><label for="add-viewer">给他开个摄像头（3D 画面）</label>
+          <div class="hint">3D 只是看热闹的摄像头，不开工人也照常干活。8GB 内存的电脑建议先不开，想看谁回头点谁卡片上的 👁。</div></div>
+        <div class="mem-line" id="mem-line-add"></div>
+        <button class="btn btn-primary" id="btn-add-bot">＋ 添加工人</button>
+      </div>
+      <div class="panel-card">
+        <h3>现有工人</h3>
+        <div id="bot-manage-list"></div>
+      </div>
+    </div>
+
+    <!-- 帮助 -->
+    <div class="panel" id="panel-help">
+      <div class="panel-card">
+        <h3>❓ 帮助</h3>
+        <div class="help-block"><h4>🎮 想亲自进去和工人一起玩？</h4><p>电脑上装一个 Minecraft 1.21.4 客户端，多人游戏填地址 <b><span id="help-join-addr">127.0.0.1:25565</span></b> 就能连进来，和工人们同场。服务器开着就能进，纯本机联机，不联网、不花钱、不用正版账号。注意：先启动服务器才能进。</p></div>
+        <div class="help-block"><h4>这是啥？</h4><p>几个 AI 工人在你的我的世界里自己砍树、盖房、聊天，你当监工。</p></div>
+        <div class="help-block"><h4>常见问题（新手小贴士）</h4><ul>
+          <li>工人的“大脑”要联网调用大模型，得先在「AI 大脑供应商」填一把 Key——没 Key 工人会睡觉。</li>
+          <li>3D 画面只是看热闹，不想看随时关，工人在地下照常干活。</li>
+          <li>世界会自动保存（每 10 分钟一次快照），不用怕关窗口前忘存。</li>
+          <li>第一次生成世界最慢要等 1~2 分钟，以后再开就几秒钟。</li>
+          <li>弹蓝色“Windows 已保护你的电脑”？点左边小字「更多信息」→「仍要运行」，不是病毒。</li>
+          <li>杀毒软件拦 Java/Node？把整个 AICraft 文件夹加入信任列表。</li>
+          <li>工人原地不动常是限流，它会自己放慢，过一分钟就好。</li>
+          <li>建议放 D:\Games\AICraft 这种短路径，别放桌面深层文件夹。</li>
+          <li>每个 3D 窗约吃 0.3GB，8GB 机一次开 1~2 个，看完随手关。</li>
+          <li>想回到以前？去「💾 存档管理」点那份存档的「用这个」。</li>
+          <li>改了难度/游戏模式：保存后要重启服务器才生效，不用重开世界。改了种子：只有「删除这个世界（重新生成）」时才用得上，现在这个世界不会变。</li>
+          <li>背包和房子都存在世界里，换 Key/换模型不影响。</li>
+          <li>关窗看到“正在存盘”就等它自己关完，别拔电源。</li>
+          <li>风扇狂响多半是 3D 开太多，关几个画面试试。</li>
+        </ul></div>
+        <div class="help-block"><h4>日志文件在哪？</h4><p>都在 AICraft 文件夹里的 <b>logs\</b> 目录：服务器日志、每个工人一份日志、指挥中心日志。卡顿时把 logs\ 里最后修改的 .log 发出来即可。</p></div>
+        <div class="help-block"><h4>3D 是什么？</h4><p>工人卡片上的「3D」按钮会开一个小窗口，像装了个摄像头，从第三人称看它在 MC 里干活。不开不影响它干活；窗口点哪个哪个到最前，随手就能关。</p></div>
+        <div class="help-block"><h4>Key（大脑钥匙）是干嘛的？</h4><p>工人的思考要调用云端大模型，每家服务商给一把 Key，按用量计费/计额度。钥匙只存在你本机 config.json 里，不会上传别处。</p></div>
+        <div class="help-block"><h4>存档机制</h4><p>同一时间只有一个世界，系统每 10 分钟自动拍一张快照（留最近 5 份），你也可以在「存档管理」点「存一份」随时手动拍（服务器开着关着都能拍）。想回到某一刻就点那份存档的「用这个」。点「删除这个世界（重新生成）」会先自动存一份再删，删完按「设置」里的种子和参数重新生成。</p></div>
+        <div class="help-block"><h4>重新播放新手向导</h4><p><button class="btn" id="btn-replay-wizard">▶ 重新走一遍新手向导</button></p></div>
+        <div class="help-block"><p class="dim">版本 v2.0 · 绿色免安装 · 数据都在本文件夹里。</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 关窗存盘小条 -->
+<div id="shutdown-bar">
+  <div class="t">👷 正在让工人收工存盘，约 5~15 秒，别拔电源。</div>
+  <button id="btn-force-quit">已经等烦了？强制退出（这次存档可能少几分钟）</button>
+</div>
+
+<div class="toast-wrap" id="toast-wrap"></div>
+<div id="app-tooltip"></div>
+
+<script src="common.js"></script>
+<script src="boot.js"></script>
+<script src="wizard.js"></script>
+<script src="mem.js"></script>
+<script src="saves.js"></script>
+<script src="chat.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
