@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>AICraft — 指挥中心摔了</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family:"Segoe UI","Microsoft YaHei",sans-serif;
+    background:#2a0d0d; color:#f3d9d9; min-height:100vh;
+    display:flex; align-items:center; justify-content:center; padding:24px;
+  }
+  .box { max-width:640px; width:100%; background:#3a1212; border:1px solid #7a2b2b;
+         border-radius:14px; padding:28px; box-shadow:0 8px 30px rgba(0,0,0,.5); }
+  h1 { font-size:24px; color:#ff8a80; margin-bottom:12px; }
+  p { font-size:14px; line-height:1.8; color:#e8c9c9; margin-bottom:10px; }
+  .path { font-family:Consolas,monospace; background:#200808; border:1px dashed #7a2b2b;
+          border-radius:6px; padding:8px 10px; font-size:12px; word-break:break-all; margin:8px 0 16px; }
+  .btns { display:flex; gap:10px; flex-wrap:wrap; margin-top:16px; }
+  button {
+    background:#5a1f1f; color:#ffd9d9; border:1px solid #a04a4a; border-radius:8px;
+    padding:10px 16px; font-size:14px; cursor:pointer;
+  }
+  button:hover { background:#702828; }
+  .ok { color:#9ccc9c; }
+</style>
+</head>
+<body>
+  <div class="box">
+    <h1>💥 指挥中心摔了</h1>
+    <p>软件的后端进程意外退出了，窗口先给你停在这里。一般是上一次没关干净、或被杀毒软件拦了一下。</p>
+    <p>请把下面这个日志文件发给帮你排查的人（或截图最后十几行）：</p>
+    <div class="path" id="log-path">logs\center.err.log</div>
+    <div class="btns">
+      <button id="btn-copy">📋 复制日志内容</button>
+      <button id="btn-open-file">📄 打开日志文件</button>
+      <button id="btn-open-folder">📂 打开日志文件夹</button>
+    </div>
+    <p style="margin-top:18px; font-size:12px; color:#c9a0a0;">操作完直接关窗即可；下次双击 AICraft 会重新拉起指挥中心。</p>
+  </div>
+<script>
+  var info = { errLog: '', outLog: '', logsDir: '' };
+  window.aicraft.on('aicraft-dead', function (d) {
+    info = d || info;
+    document.getElementById('log-path').textContent = info.errLog || 'logs\\center.err.log';
+  });
+  document.getElementById('btn-copy').onclick = function () {
+    var b = this;
+    window.aicraft.readTail(info.errLog || info.outLog || '', 200).then(function (txt) {
+      var body = '【AICraft 指挥中心日志】\n文件: ' + (info.errLog || '') + '\n\n' + (txt || '(日志为空)');
+      window.aicraft.copyText(body).then(function () { b.textContent = '✅ 已复制日志内容'; });
+    });
+  };
+  document.getElementById('btn-open-file').onclick = function () {
+    window.aicraft.openPath(info.errLog || info.outLog || '');
+  };
+  document.getElementById('btn-open-folder').onclick = function () {
+    window.aicraft.showItem(info.errLog || info.outLog || info.logsDir || '');
+  };
+</script>
+</body>
+</html>
