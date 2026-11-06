@@ -1,4 +1,4 @@
-# pack-aicraft.ps1 — AICraft 打包脚本（干净机测试通过后，用户在开发机跑）
+﻿# pack-aicraft.ps1 — AICraft 打包脚本（干净机测试通过后，用户在开发机跑）
 # 做法：把整个项目按 scripts\pack-exclude-list.txt 的口径 robocopy 到暂存目录，
 #       再把 config.template.json 作为首启 config.json（无 key），最后校验 viewer 回环 patch。
 # 注意：本脚本不删开发机任何文件；运行前请先跑 clean-before-pack.ps1。
@@ -23,7 +23,6 @@ $xd = @(
 )
 $xf = @(
   'config.json',
-  'docs\公众号稿.md',
   'Thumbs.db',
   'Desktop.ini',
   '.DS_Store'
@@ -36,6 +35,12 @@ if ($xf.Count) { $args += '/XF'; $args += $xf }
 if ($LASTEXITCODE -ge 8) { throw "robocopy 失败 code=$LASTEXITCODE" }
 
 # 3) 递归删除残留 .bak / *.pre-rollback / *.pre-reset / *.log / *.jsonl（exclude 口径）
+if (Test-Path -LiteralPath (Join-Path $Out 'docs')) {
+  Get-ChildItem -LiteralPath (Join-Path $Out 'docs') -Filter '*稿.md' -File | ForEach-Object {
+    Remove-Item -LiteralPath $_.FullName -Force
+    Write-Host ('[OK] 已从发行包剔除草稿类文件: ' + $_.Name) -ForegroundColor Green
+  }
+}
 Get-ChildItem -LiteralPath $Out -Recurse -Force -ErrorAction SilentlyContinue |
   Where-Object {
     $_.Name -like '*.bak-*' -or $_.Name -like '*.pre-rollback-*' -or
