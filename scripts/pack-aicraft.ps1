@@ -23,6 +23,7 @@ $xd = @(
 )
 $xf = @(
   'config.json',
+  'docs\公众号稿.md',
   'Thumbs.db',
   'Desktop.ini',
   '.DS_Store'
